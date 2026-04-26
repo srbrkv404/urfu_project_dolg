@@ -1,0 +1,15 @@
+{
+  "name": "project_urfu_dolg",
+  "version": "1.0.0",
+  "description": "Campus Jobs MVP monorepo (client + server)",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
+    "dev:client": "npm run dev --prefix client",
+    "dev:server": "npm run dev --prefix server",
+    "build:client": "npm run build --prefix client"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
