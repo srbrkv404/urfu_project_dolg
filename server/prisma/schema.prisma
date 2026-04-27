@@ -1,0 +1,226 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum EmploymentType {
+  PART_TIME
+  TEMPORARY
+  INTERNSHIP
+  PROJECT
+}
+
+enum WorkMode {
+  ONSITE
+  REMOTE
+  HYBRID
+}
+
+enum JobPostStatus {
+  DRAFT
+  PUBLISHED
+  CLOSED
+}
+
+enum ApplicationStatus {
+  SUBMITTED
+  REVIEWING
+  ACCEPTED
+  REJECTED
+}
+
+enum NotificationType {
+  APPLICATION_STATUS_CHANGED
+  NEW_APPLICATION
+  SYSTEM
+}
+
+model Role {
+  id    Int    @id @default(autoincrement())
+  name  String @unique
+  users User[]
+
+  @@map("roles")
+}
+
+model User {
+  id            Int                        @id @default(autoincrement())
+  email         String                     @unique
+  passwordHash  String                     @map("password_hash")
+  fullName      String                     @map("full_name")
+  isActive      Boolean                    @default(true) @map("is_active")
+  createdAt     DateTime                   @default(now()) @map("created_at")
+  updatedAt     DateTime                   @updatedAt @map("updated_at")
+  roleId        Int                        @map("role_id")
+  role          Role                       @relation(fields: [roleId], references: [id])
+  student       StudentProfile?
+  employer      EmployerProfile?
+  notifications Notification[]
+  statusChanges ApplicationStatusHistory[] @relation("statusChangedBy")
+
+  @@map("users")
+}
+
+model StudentProfile {
+  id                Int            @id @default(autoincrement())
+  userId            Int            @unique @map("user_id")
+  studyProgram      String         @map("study_program")
+  courseYear        Int            @map("course_year")
+  resumeUrl         String?        @map("resume_url")
+  preferredWorkMode WorkMode?      @map("preferred_work_mode")
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
+  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  applications      Application[]
+  studentSkills     StudentSkill[]
+
+  @@map("student_profiles")
+}
+
+model EmployerProfile {
+  id            Int       @id @default(autoincrement())
+  userId        Int       @unique @map("user_id")
+  organization  String
+  positionTitle String?   @map("position_title")
+  about         String?
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobPosts      JobPost[]
+
+  @@map("employer_profiles")
+}
+
+model Department {
+  id          Int       @id @default(autoincrement())
+  code        String    @unique
+  name        String
+  description String?
+  jobPosts    JobPost[]
+
+  @@map("departments")
+}
+
+model JobCategory {
+  id       Int       @id @default(autoincrement())
+  name     String    @unique
+  jobPosts JobPost[]
+
+  @@map("job_categories")
+}
+
+model InternshipProgram {
+  id          Int       @id @default(autoincrement())
+  title       String
+  partnerName String?   @map("partner_name")
+  description String?
+  startDate   DateTime? @map("start_date")
+  endDate     DateTime? @map("end_date")
+  jobPosts    JobPost[]
+
+  @@map("internship_programs")
+}
+
+model JobPost {
+  id                  Int                @id @default(autoincrement())
+  title               String
+  description         String
+  location            String?
+  employmentType      EmploymentType     @map("employment_type")
+  workMode            WorkMode           @map("work_mode")
+  salaryMin           Int?               @map("salary_min")
+  salaryMax           Int?               @map("salary_max")
+  status              JobPostStatus      @default(DRAFT)
+  createdAt           DateTime           @default(now()) @map("created_at")
+  updatedAt           DateTime           @updatedAt @map("updated_at")
+  employerProfileId   Int                @map("employer_profile_id")
+  departmentId        Int?               @map("department_id")
+  categoryId          Int?               @map("category_id")
+  internshipProgramId Int?               @map("internship_program_id")
+  employerProfile     EmployerProfile    @relation(fields: [employerProfileId], references: [id])
+  department          Department?        @relation(fields: [departmentId], references: [id])
+  category            JobCategory?       @relation(fields: [categoryId], references: [id])
+  internshipProgram   InternshipProgram? @relation(fields: [internshipProgramId], references: [id])
+  applications        Application[]
+  jobPostSkills       JobPostSkill[]
+
+  @@map("job_posts")
+}
+
+model Application {
+  id               Int                        @id @default(autoincrement())
+  jobPostId        Int                        @map("job_post_id")
+  studentProfileId Int                        @map("student_profile_id")
+  coverLetter      String?                    @map("cover_letter")
+  status           ApplicationStatus          @default(SUBMITTED)
+  createdAt        DateTime                   @default(now()) @map("created_at")
+  updatedAt        DateTime                   @updatedAt @map("updated_at")
+  jobPost          JobPost                    @relation(fields: [jobPostId], references: [id], onDelete: Cascade)
+  studentProfile   StudentProfile             @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+  statusHistory    ApplicationStatusHistory[]
+
+  @@unique([jobPostId, studentProfileId])
+  @@map("applications")
+}
+
+model ApplicationStatusHistory {
+  id            Int                @id @default(autoincrement())
+  applicationId Int                @map("application_id")
+  changedById   Int                @map("changed_by_id")
+  fromStatus    ApplicationStatus? @map("from_status")
+  toStatus      ApplicationStatus  @map("to_status")
+  note          String?
+  createdAt     DateTime           @default(now()) @map("created_at")
+  application   Application        @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  changedBy     User               @relation("statusChangedBy", fields: [changedById], references: [id])
+
+  @@map("application_status_history")
+}
+
+model Skill {
+  id            Int            @id @default(autoincrement())
+  name          String         @unique
+  studentSkills StudentSkill[]
+  jobPostSkills JobPostSkill[]
+
+  @@map("skills")
+}
+
+model StudentSkill {
+  studentProfileId Int            @map("student_profile_id")
+  skillId          Int            @map("skill_id")
+  level            String?
+  studentProfile   StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+  skill            Skill          @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@id([studentProfileId, skillId])
+  @@map("student_skills")
+}
+
+model JobPostSkill {
+  jobPostId  Int     @map("job_post_id")
+  skillId    Int     @map("skill_id")
+  isRequired Boolean @default(false) @map("is_required")
+  jobPost    JobPost @relation(fields: [jobPostId], references: [id], onDelete: Cascade)
+  skill      Skill   @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@id([jobPostId, skillId])
+  @@map("job_post_skills")
+}
+
+model Notification {
+  id        Int              @id @default(autoincrement())
+  userId    Int              @map("user_id")
+  type      NotificationType
+  title     String
+  body      String
+  isRead    Boolean          @default(false) @map("is_read")
+  createdAt DateTime         @default(now()) @map("created_at")
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
