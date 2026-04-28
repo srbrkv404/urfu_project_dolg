@@ -3,6 +3,8 @@ const cors = require("cors");
 const dotenv = require("dotenv");
 const authRoutes = require("./routes/auth.routes");
 const protectedRoutes = require("./routes/protected.routes");
+const jobRoutes = require("./routes/job.routes");
+const applicationRoutes = require("./routes/application.routes");
 const errorHandler = require("./middlewares/error.middleware");
 
 dotenv.config();
@@ -23,6 +25,8 @@ app.get("/api/health", (_req, res) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/protected", protectedRoutes);
+app.use("/api/jobs", jobRoutes);
+app.use("/api/applications", applicationRoutes);
 
 app.use(errorHandler);
 

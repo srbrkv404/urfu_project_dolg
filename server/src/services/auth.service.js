@@ -21,6 +21,13 @@ const loginSchema = z.object({
   password: z.string().min(1),
 });
 
+const mapZodDetails = (issues) =>
+  issues.map((issue) => ({
+    field: issue.path.join(".") || "body",
+    issue: issue.message,
+    expected: issue.code,
+  }));
+
 const ensureRole = async (name) => {
   return prisma.role.upsert({
     where: { name },
@@ -40,7 +47,9 @@ const signToken = (user) => {
 const register = async (payload) => {
   const parsed = registerSchema.safeParse(payload);
   if (!parsed.success) {
-    throw new HttpError(400, "Некорректные данные регистрации.");
+    throw new HttpError(400, "Некорректные данные регистрации.", {
+      details: mapZodDetails(parsed.error.issues),
+    });
   }
 
   const data = parsed.data;
@@ -105,7 +114,9 @@ const register = async (payload) => {
 const login = async (payload) => {
   const parsed = loginSchema.safeParse(payload);
   if (!parsed.success) {
-    throw new HttpError(400, "Некорректные данные входа.");
+    throw new HttpError(400, "Некорректные данные входа.", {
+      details: mapZodDetails(parsed.error.issues),
+    });
   }
 
   const user = await prisma.user.findUnique({
