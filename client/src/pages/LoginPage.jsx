@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import http from "../api/http";
+import ApiErrorAlert from "../components/ApiErrorAlert";
+import { extractApiError } from "../utils/api-error";
 
 function LoginPage() {
   const navigate = useNavigate();
   const [isRegister, setIsRegister] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     email: "",
     password: "",
@@ -20,7 +23,8 @@ function LoginPage() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    setError("");
+    setError(null);
+    setLoading(true);
 
     try {
       if (isRegister) {
@@ -36,7 +40,9 @@ function LoginPage() {
       localStorage.setItem("user", JSON.stringify(data.user));
       navigate("/employer/jobs");
     } catch (requestError) {
-      setError(requestError?.response?.data?.error?.userMessage || "Не удалось выполнить вход.");
+      setError(extractApiError(requestError, "Не удалось выполнить вход."));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -49,7 +55,7 @@ function LoginPage() {
             Войдите как работодатель, чтобы создавать вакансии и работать с откликами.
           </p>
 
-          {error && <div className="alert alert-danger">{error}</div>}
+          <ApiErrorAlert error={error} onClose={() => setError(null)} />
 
           <form onSubmit={handleSubmit} className="d-grid gap-3">
             {isRegister && (
@@ -92,8 +98,8 @@ function LoginPage() {
               required
             />
 
-            <button className="btn btn-primary" type="submit">
-              {isRegister ? "Зарегистрироваться и войти" : "Войти"}
+            <button className="btn btn-primary" type="submit" disabled={loading}>
+              {loading ? "Подождите..." : isRegister ? "Зарегистрироваться и войти" : "Войти"}
             </button>
           </form>
 

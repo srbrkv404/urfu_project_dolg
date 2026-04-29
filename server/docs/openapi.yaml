@@ -1,0 +1,475 @@
+openapi: 3.0.3
+info:
+  title: Campus Jobs API
+  version: 1.0.0
+  description: API сервиса для временной работы и стажировок в университете.
+servers:
+  - url: http://localhost:4000/api
+tags:
+  - name: Health
+  - name: Auth
+  - name: Jobs
+  - name: Applications
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Проверка состояния API
+      responses:
+        "200":
+          description: API работает
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  timestamp:
+                    type: string
+                    format: date-time
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Регистрация пользователя
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: Пользователь зарегистрирован
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Вход в систему
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Успешный вход
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthError"
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Текущий пользователь
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Данные пользователя
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserSummary"
+        "401":
+          $ref: "#/components/responses/AuthError"
+  /jobs:
+    post:
+      tags: [Jobs]
+      summary: Создать вакансию (роль employer)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateJobRequest"
+      responses:
+        "201":
+          description: Вакансия создана
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobPost"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthError"
+        "403":
+          $ref: "#/components/responses/AuthError"
+  /jobs/mine:
+    get:
+      tags: [Jobs]
+      summary: Список вакансий текущего работодателя
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Список вакансий
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/JobPost"
+        "401":
+          $ref: "#/components/responses/AuthError"
+        "403":
+          $ref: "#/components/responses/AuthError"
+  /jobs/{id}/applications:
+    get:
+      tags: [Jobs]
+      summary: Отклики на вакансию работодателя
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Список откликов
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ApplicationWithStudent"
+        "401":
+          $ref: "#/components/responses/AuthError"
+        "403":
+          $ref: "#/components/responses/AuthError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+  /applications:
+    post:
+      tags: [Applications]
+      summary: Создать отклик (роль student)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateApplicationRequest"
+      responses:
+        "201":
+          description: Отклик создан
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Application"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthError"
+        "403":
+          $ref: "#/components/responses/AuthError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+  /applications/{id}/status:
+    patch:
+      tags: [Applications]
+      summary: Изменить статус отклика (роль employer)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateApplicationStatusRequest"
+      responses:
+        "200":
+          description: Статус обновлен
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Application"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthError"
+        "403":
+          $ref: "#/components/responses/AuthError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+  /applications/{id}/history:
+    get:
+      tags: [Applications]
+      summary: История изменения статусов отклика
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: История статусов
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ApplicationStatusHistory"
+        "401":
+          $ref: "#/components/responses/AuthError"
+        "403":
+          $ref: "#/components/responses/AuthError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  responses:
+    ValidationError:
+      description: Ошибка валидации
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    AuthError:
+      description: Ошибка авторизации/доступа
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFoundError:
+      description: Сущность не найдена
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    ConflictError:
+      description: Конфликт состояния
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+  schemas:
+    RegisterRequest:
+      type: object
+      required: [email, password, fullName, role]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 6
+        fullName:
+          type: string
+        role:
+          type: string
+          enum: [student, employer]
+        organization:
+          type: string
+        positionTitle:
+          type: string
+        studyProgram:
+          type: string
+        courseYear:
+          type: integer
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        user:
+          $ref: "#/components/schemas/UserSummary"
+    UserSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+        fullName:
+          type: string
+        role:
+          type: string
+    CreateJobRequest:
+      type: object
+      required: [title, description, employmentType, workMode]
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        location:
+          type: string
+        employmentType:
+          type: string
+          enum: [PART_TIME, TEMPORARY, INTERNSHIP, PROJECT]
+        workMode:
+          type: string
+          enum: [ONSITE, REMOTE, HYBRID]
+        salaryMin:
+          type: integer
+        salaryMax:
+          type: integer
+        departmentId:
+          type: integer
+        categoryId:
+          type: integer
+        internshipProgramId:
+          type: integer
+    JobPost:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    CreateApplicationRequest:
+      type: object
+      required: [jobPostId]
+      properties:
+        jobPostId:
+          type: integer
+        coverLetter:
+          type: string
+    UpdateApplicationStatusRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [REVIEWING, ACCEPTED, REJECTED]
+        note:
+          type: string
+    Application:
+      type: object
+      properties:
+        id:
+          type: integer
+        jobPostId:
+          type: integer
+        studentProfileId:
+          type: integer
+        status:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    ApplicationWithStudent:
+      allOf:
+        - $ref: "#/components/schemas/Application"
+        - type: object
+          properties:
+            studentProfile:
+              type: object
+              properties:
+                user:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    fullName:
+                      type: string
+                    email:
+                      type: string
+    ApplicationStatusHistory:
+      type: object
+      properties:
+        id:
+          type: integer
+        applicationId:
+          type: integer
+        fromStatus:
+          type: string
+          nullable: true
+        toStatus:
+          type: string
+        note:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        changedBy:
+          type: object
+          properties:
+            id:
+              type: integer
+            fullName:
+              type: string
+            email:
+              type: string
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            type:
+              type: string
+              example: validation_error
+            code:
+              type: string
+              example: BAD_REQUEST
+            userMessage:
+              type: string
+            developerMessage:
+              type: string
+            details:
+              type: array
+              items:
+                type: object
+                properties:
+                  field:
+                    type: string
+                  issue:
+                    type: string
+                  expected:
+                    type: string
+            traceId:
+              type: string

@@ -1,13 +1,21 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import http from "../api/http";
+import ApiErrorAlert from "../components/ApiErrorAlert";
+import { extractApiError } from "../utils/api-error";
 
 const statusOptions = ["REVIEWING", "ACCEPTED", "REJECTED"];
+const statusLabels = {
+  SUBMITTED: "Отправлен",
+  REVIEWING: "На рассмотрении",
+  ACCEPTED: "Принят",
+  REJECTED: "Отклонен",
+};
 
 function JobApplicationsPage() {
   const { jobId } = useParams();
   const [applications, setApplications] = useState([]);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const loadApplications = async () => {
@@ -15,7 +23,7 @@ function JobApplicationsPage() {
       const { data } = await http.get(`/jobs/${jobId}/applications`);
       setApplications(data);
     } catch (requestError) {
-      setError(requestError?.response?.data?.error?.userMessage || "Не удалось загрузить отклики.");
+      setError(extractApiError(requestError, "Не удалось загрузить отклики."));
     } finally {
       setLoading(false);
     }
@@ -26,12 +34,12 @@ function JobApplicationsPage() {
   }, [jobId]);
 
   const changeStatus = async (applicationId, status) => {
-    setError("");
+    setError(null);
     try {
       await http.patch(`/applications/${applicationId}/status`, { status });
       await loadApplications();
     } catch (requestError) {
-      setError(requestError?.response?.data?.error?.userMessage || "Не удалось обновить статус.");
+      setError(extractApiError(requestError, "Не удалось обновить статус."));
     }
   };
 
@@ -44,47 +52,81 @@ function JobApplicationsPage() {
         </Link>
       </section>
 
-      {loading && <div className="alert alert-info">Загрузка...</div>}
-      {error && <div className="alert alert-danger">{error}</div>}
+      {loading && <div className="alert alert-info">Загрузка откликов...</div>}
+      <ApiErrorAlert error={error} onClose={() => setError(null)} />
 
       {!loading && !error && (
-        <div className="table-responsive">
-          <table className="table table-striped align-middle">
-            <thead>
-              <tr>
-                <th>Студент</th>
-                <th>Email</th>
-                <th>Текущий статус</th>
-                <th>Изменить</th>
-              </tr>
-            </thead>
-            <tbody>
-              {applications.map((item) => (
-                <tr key={item.id}>
-                  <td>{item.studentProfile.user.fullName}</td>
-                  <td>{item.studentProfile.user.email}</td>
-                  <td>{item.status}</td>
-                  <td>
-                    <select
-                      className="form-select form-select-sm"
-                      value={item.status}
-                      onChange={(event) => changeStatus(item.id, event.target.value)}
-                    >
-                      <option value={item.status}>{item.status}</option>
-                      {statusOptions
-                        .filter((status) => status !== item.status)
-                        .map((status) => (
-                          <option key={status} value={status}>
-                            {status}
-                          </option>
-                        ))}
-                    </select>
-                  </td>
+        <>
+          {applications.length === 0 && (
+            <div className="alert alert-light border">
+              Пока нет откликов на эту вакансию.
+            </div>
+          )}
+
+          <div className="table-responsive d-none d-md-block">
+            <table className="table table-striped align-middle">
+              <thead>
+                <tr>
+                  <th>Студент</th>
+                  <th>Email</th>
+                  <th>Текущий статус</th>
+                  <th>Изменить</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {applications.map((item) => (
+                  <tr key={item.id}>
+                    <td>{item.studentProfile.user.fullName}</td>
+                    <td>{item.studentProfile.user.email}</td>
+                    <td>{statusLabels[item.status] || item.status}</td>
+                    <td>
+                      <select
+                        className="form-select form-select-sm"
+                        value={item.status}
+                        onChange={(event) => changeStatus(item.id, event.target.value)}
+                      >
+                        <option value={item.status}>{statusLabels[item.status] || item.status}</option>
+                        {statusOptions
+                          .filter((status) => status !== item.status)
+                          .map((status) => (
+                            <option key={status} value={status}>
+                              {statusLabels[status] || status}
+                            </option>
+                          ))}
+                      </select>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="d-grid gap-2 d-md-none">
+            {applications.map((item) => (
+              <article key={item.id} className="card border-0 shadow-sm">
+                <div className="card-body">
+                  <div className="fw-semibold">{item.studentProfile.user.fullName}</div>
+                  <div className="text-secondary small mb-2">{item.studentProfile.user.email}</div>
+                  <div className="small mb-2">Статус: {statusLabels[item.status] || item.status}</div>
+                  <select
+                    className="form-select form-select-sm"
+                    value={item.status}
+                    onChange={(event) => changeStatus(item.id, event.target.value)}
+                  >
+                    <option value={item.status}>{statusLabels[item.status] || item.status}</option>
+                    {statusOptions
+                      .filter((status) => status !== item.status)
+                      .map((status) => (
+                        <option key={status} value={status}>
+                          {statusLabels[status] || status}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              </article>
+            ))}
+          </div>
+        </>
       )}
     </main>
   );

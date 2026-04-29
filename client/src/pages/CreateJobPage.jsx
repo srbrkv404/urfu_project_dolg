@@ -1,10 +1,25 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import http from "../api/http";
+import ApiErrorAlert from "../components/ApiErrorAlert";
+import { extractApiError } from "../utils/api-error";
+
+const employmentTypeOptions = [
+  { value: "PART_TIME", label: "Частичная занятость" },
+  { value: "TEMPORARY", label: "Временная работа" },
+  { value: "INTERNSHIP", label: "Стажировка" },
+  { value: "PROJECT", label: "Проектная занятость" },
+];
+
+const workModeOptions = [
+  { value: "ONSITE", label: "Офис" },
+  { value: "REMOTE", label: "Удаленно" },
+  { value: "HYBRID", label: "Гибрид" },
+];
 
 function CreateJobPage() {
   const navigate = useNavigate();
-  const [error, setError] = useState("");
+  const [error, setError] = useState(null);
   const [form, setForm] = useState({
     title: "",
     description: "",
@@ -19,13 +34,13 @@ function CreateJobPage() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    setError("");
+    setError(null);
 
     try {
       await http.post("/jobs", form);
       navigate("/employer/jobs");
     } catch (requestError) {
-      setError(requestError?.response?.data?.error?.userMessage || "Не удалось создать вакансию.");
+      setError(extractApiError(requestError, "Не удалось создать вакансию."));
     }
   };
 
@@ -40,12 +55,13 @@ function CreateJobPage() {
             </Link>
           </div>
 
-          {error && <div className="alert alert-danger">{error}</div>}
+          <ApiErrorAlert error={error} onClose={() => setError(null)} />
 
           <form onSubmit={handleSubmit} className="d-grid gap-3">
             <input
               className="form-control"
               name="title"
+              maxLength={120}
               placeholder="Название вакансии"
               value={form.title}
               onChange={handleChange}
@@ -57,7 +73,8 @@ function CreateJobPage() {
               placeholder="Описание"
               value={form.description}
               onChange={handleChange}
-              rows={4}
+              rows={5}
+              maxLength={1200}
               required
             />
             <input
@@ -75,17 +92,20 @@ function CreateJobPage() {
                   value={form.employmentType}
                   onChange={handleChange}
                 >
-                  <option value="PART_TIME">PART_TIME</option>
-                  <option value="TEMPORARY">TEMPORARY</option>
-                  <option value="INTERNSHIP">INTERNSHIP</option>
-                  <option value="PROJECT">PROJECT</option>
+                  {employmentTypeOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="col-12 col-md-6">
                 <select className="form-select" name="workMode" value={form.workMode} onChange={handleChange}>
-                  <option value="ONSITE">ONSITE</option>
-                  <option value="REMOTE">REMOTE</option>
-                  <option value="HYBRID">HYBRID</option>
+                  {workModeOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
